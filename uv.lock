@@ -12,7 +12,7 @@ wheels = [
 ]
 
 [[package]]
-name = "ge-appointment-finder"
+name = "ge-apt-finder"
 version = "0.1.0"
 source = { editable = "." }
 

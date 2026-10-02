@@ -1,6 +1,6 @@
 import socket
 
-from ge_appointment_finder import systemd
+from ge_apt_finder import systemd
 
 
 def test_notify_noop_without_socket(monkeypatch):

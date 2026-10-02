@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from ge_appointment_finder import cbp
+from ge_apt_finder import cbp
 
 
 def test_slot_from_api_parses_and_orders_by_start():

@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from ge_appointment_finder.cbp import Slot
+from ge_apt_finder.cbp import Slot
 
 
 class SeenSlots:

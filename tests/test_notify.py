@@ -2,7 +2,7 @@ import base64
 
 import pytest
 
-from ge_appointment_finder.notify import Notifier, NotifierConfigError
+from ge_apt_finder.notify import Notifier, NotifierConfigError
 
 
 def test_from_env_requires_url(monkeypatch):

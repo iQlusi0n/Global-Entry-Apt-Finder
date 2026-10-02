@@ -11,11 +11,11 @@ import time
 from datetime import date, datetime
 from pathlib import Path
 
-from ge_appointment_finder import __version__, cbp, systemd
-from ge_appointment_finder.notify import Notifier, NotifierConfigError
-from ge_appointment_finder.store import SeenSlots
+from ge_apt_finder import __version__, cbp, systemd
+from ge_apt_finder.notify import Notifier, NotifierConfigError
+from ge_apt_finder.store import SeenSlots
 
-log = logging.getLogger("ge_appointment_finder")
+log = logging.getLogger("ge_apt_finder")
 
 DEFAULT_INTERVAL = 300
 DEFAULT_STATE_FILE = Path(".slots.json")
@@ -134,7 +134,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="ge-appointment-finder",
+        prog="ge-apt-finder",
         description="Watch CBP Global Entry enrollment centers for new interview slots.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")

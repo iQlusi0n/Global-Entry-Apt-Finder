@@ -20,7 +20,7 @@ Or run it straight from a clone:
 ```sh
 git clone https://github.com/iQlusi0n/Global-Entry-Apt-Finder
 cd Global-Entry-Apt-Finder
-uv run ge-appointment-finder --help
+uv run ge-apt-finder --help
 ```
 
 ## Usage
@@ -28,7 +28,7 @@ uv run ge-appointment-finder --help
 1. Find the IDs of the enrollment centers you want to watch:
 
    ```sh
-   ge-appointment-finder locations --state OH --state MI
+   ge-apt-finder locations --state OH --state MI
    ```
 
 2. Point it at an ntfy topic by exporting the variables (or put them in a file
@@ -43,7 +43,7 @@ uv run ge-appointment-finder --help
 3. Watch:
 
    ```sh
-   ge-appointment-finder watch -l 5023 -l 7680 --before 2026-12-01
+   ge-apt-finder watch -l 5023 -l 7680 --before 2026-12-01
    ```
 
    Options (each also settable via the environment; flags win):
@@ -68,25 +68,25 @@ centers show up in `locations` without an update. Restart `watch` with new
 
 ## Running as a service
 
-`contrib/ge-appointment-finder.service` is a systemd **user** unit. All
-configuration comes from `~/.config/ge-appointment-finder/env` (same keys as
+`contrib/ge-apt-finder.service` is a systemd **user** unit. All
+configuration comes from `~/.config/ge-apt-finder/env` (same keys as
 `.env.example`), so the unit file itself never needs editing.
 
 ```sh
 uv tool install git+https://github.com/iQlusi0n/Global-Entry-Apt-Finder
-mkdir -p ~/.config/systemd/user ~/.config/ge-appointment-finder
-cp contrib/ge-appointment-finder.service ~/.config/systemd/user/
-cp .env.example ~/.config/ge-appointment-finder/env
-chmod 600 ~/.config/ge-appointment-finder/env
-$EDITOR ~/.config/ge-appointment-finder/env     # NTFY_URL, GE_LOCATIONS, GE_BEFORE ...
+mkdir -p ~/.config/systemd/user ~/.config/ge-apt-finder
+cp contrib/ge-apt-finder.service ~/.config/systemd/user/
+cp .env.example ~/.config/ge-apt-finder/env
+chmod 600 ~/.config/ge-apt-finder/env
+$EDITOR ~/.config/ge-apt-finder/env     # NTFY_URL, GE_LOCATIONS, GE_BEFORE ...
 systemctl --user daemon-reload
-systemctl --user enable --now ge-appointment-finder
+systemctl --user enable --now ge-apt-finder
 loginctl enable-linger "$USER"                   # keep it running while logged out
 ```
 
 ```sh
-systemctl --user status ge-appointment-finder    # shows "last poll HH:MM:SS, N new slot(s)"
-journalctl --user -u ge-appointment-finder -f
+systemctl --user status ge-apt-finder    # shows "last poll HH:MM:SS, N new slot(s)"
+journalctl --user -u ge-apt-finder -f
 ```
 
 What the unit gives you:
@@ -98,17 +98,17 @@ What the unit gives you:
 - `Restart=on-failure` with `StartLimitIntervalSec=0`: survives network
   outages indefinitely. `SIGTERM` (`systemctl stop`) exits cleanly.
 - `StateDirectory=`: the seen-slot file lives in the unit's state directory
-  (`~/.config/ge-appointment-finder/slots.json` for user units; newer systemd
+  (`~/.config/ge-apt-finder/slots.json` for user units; newer systemd
   also symlinks it from `~/.local/state/`).
 - Log lines carry no timestamps under journald (it adds its own).
 
-After changing the env file: `systemctl --user restart ge-appointment-finder`.
+After changing the env file: `systemctl --user restart ge-apt-finder`.
 
 Prefer a timer or cron instead? Run `watch --once` on a schedule; the state
 file dedupes across invocations:
 
 ```cron
-*/5 * * * * GE_LOCATIONS=5023 NTFY_URL=https://ntfy.sh/your-topic ~/.local/bin/ge-appointment-finder watch --once --state-file ~/.slots.json
+*/5 * * * * GE_LOCATIONS=5023 NTFY_URL=https://ntfy.sh/your-topic ~/.local/bin/ge-apt-finder watch --once --state-file ~/.slots.json
 ```
 
 ## Development

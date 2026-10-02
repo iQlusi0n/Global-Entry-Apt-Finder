@@ -1,0 +1,39 @@
+# systemd user unit for ge-apt-finder.
+#
+# All configuration lives in ~/.config/ge-apt-finder/env (see
+# .env.example); this file never needs editing. Install:
+#
+#   uv tool install git+https://github.com/iQlusi0n/Global-Entry-Apt-Finder
+#   mkdir -p ~/.config/systemd/user ~/.config/ge-apt-finder
+#   cp contrib/ge-apt-finder.service ~/.config/systemd/user/
+#   cp .env.example ~/.config/ge-apt-finder/env && chmod 600 ~/.config/ge-apt-finder/env
+#   $EDITOR ~/.config/ge-apt-finder/env      # NTFY_URL, GE_LOCATIONS, ...
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now ge-apt-finder
+#   loginctl enable-linger "$USER"                    # keep running while logged out
+#
+# Inspect:  systemctl --user status ge-apt-finder
+#           journalctl --user -u ge-apt-finder -f
+
+[Unit]
+Description=Global Entry appointment finder
+Documentation=https://github.com/iQlusi0n/Global-Entry-Apt-Finder
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+EnvironmentFile=%h/.config/ge-apt-finder/env
+Environment=GE_STATE_FILE=%S/ge-apt-finder/slots.json
+StateDirectory=ge-apt-finder
+ExecStart=%h/.local/bin/ge-apt-finder watch
+# The service pings the watchdog once per poll; keep this above GE_INTERVAL
+# plus a few minutes of slack for slow/retrying API calls.
+WatchdogSec=900
+Restart=on-failure
+RestartSec=60
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

@@ -2,8 +2,8 @@ from datetime import date, datetime
 
 import pytest
 
-from ge_appointment_finder import cbp, cli
-from ge_appointment_finder.store import SeenSlots
+from ge_apt_finder import cbp, cli
+from ge_apt_finder.store import SeenSlots
 
 # Far enough in the future that SeenSlots never prunes them as past.
 YEAR = 2099

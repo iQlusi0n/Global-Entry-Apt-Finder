@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from ge_appointment_finder.cbp import Slot
-from ge_appointment_finder.store import SeenSlots
+from ge_apt_finder.cbp import Slot
+from ge_apt_finder.store import SeenSlots
 
 NOW = datetime(2026, 1, 1, 0, 0)
 
