@@ -1,4 +1,4 @@
-# GE Appointment Finder
+# Global Entry Appointment Finder
 
 Polls the CBP Trusted Traveler Programs scheduler for new Global Entry interview
 slots at the enrollment centers you choose and pushes a notification to an
