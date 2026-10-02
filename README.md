@@ -12,14 +12,14 @@ No third-party runtime dependencies; Python 3.12+ standard library only.
 With [uv](https://docs.astral.sh/uv/):
 
 ```sh
-uv tool install git+https://github.com/iQlusi0n/GE-Appointment-Finder
+uv tool install git+https://github.com/iQlusi0n/Global-Entry-Apt-Finder
 ```
 
 Or run it straight from a clone:
 
 ```sh
-git clone https://github.com/iQlusi0n/GE-Appointment-Finder
-cd GE-Appointment-Finder
+git clone https://github.com/iQlusi0n/Global-Entry-Apt-Finder
+cd Global-Entry-Apt-Finder
 uv run ge-appointment-finder --help
 ```
 
@@ -73,7 +73,7 @@ configuration comes from `~/.config/ge-appointment-finder/env` (same keys as
 `.env.example`), so the unit file itself never needs editing.
 
 ```sh
-uv tool install git+https://github.com/iQlusi0n/GE-Appointment-Finder
+uv tool install git+https://github.com/iQlusi0n/Global-Entry-Apt-Finder
 mkdir -p ~/.config/systemd/user ~/.config/ge-appointment-finder
 cp contrib/ge-appointment-finder.service ~/.config/systemd/user/
 cp .env.example ~/.config/ge-appointment-finder/env

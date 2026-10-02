@@ -3,7 +3,7 @@
 # All configuration lives in ~/.config/ge-appointment-finder/env (see
 # .env.example); this file never needs editing. Install:
 #
-#   uv tool install git+https://github.com/iQlusi0n/GE-Appointment-Finder
+#   uv tool install git+https://github.com/iQlusi0n/Global-Entry-Apt-Finder
 #   mkdir -p ~/.config/systemd/user ~/.config/ge-appointment-finder
 #   cp contrib/ge-appointment-finder.service ~/.config/systemd/user/
 #   cp .env.example ~/.config/ge-appointment-finder/env && chmod 600 ~/.config/ge-appointment-finder/env
@@ -17,7 +17,7 @@
 
 [Unit]
 Description=Global Entry appointment finder
-Documentation=https://github.com/iQlusi0n/GE-Appointment-Finder
+Documentation=https://github.com/iQlusi0n/Global-Entry-Apt-Finder
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=0

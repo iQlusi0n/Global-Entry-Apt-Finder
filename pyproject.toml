@@ -20,8 +20,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/iQlusi0n/GE-Appointment-Finder"
-Issues = "https://github.com/iQlusi0n/GE-Appointment-Finder/issues"
+Homepage = "https://github.com/iQlusi0n/Global-Entry-Apt-Finder"
+Issues = "https://github.com/iQlusi0n/Global-Entry-Apt-Finder/issues"
 
 [project.scripts]
 ge-appointment-finder = "ge_appointment_finder.cli:main"
