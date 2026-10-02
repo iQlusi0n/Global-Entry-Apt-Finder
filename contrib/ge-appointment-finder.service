@@ -1,0 +1,27 @@
+# systemd user unit. Install with:
+#   mkdir -p ~/.config/systemd/user ~/.config/ge-appointment-finder
+#   cp contrib/ge-appointment-finder.service ~/.config/systemd/user/
+#   cp .env.example ~/.config/ge-appointment-finder/env   # then fill in NTFY_*
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now ge-appointment-finder
+#   loginctl enable-linger $USER   # keep it running when logged out
+# Edit the -l / --before arguments in ExecStart to taste.
+
+[Unit]
+Description=Global Entry appointment finder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/ge-appointment-finder/env
+ExecStart=%h/.local/bin/ge-appointment-finder watch \
+    --state-file %S/ge-appointment-finder/slots.json \
+    -l 5023 -l 7680 \
+    --before 2026-12-01
+StateDirectory=ge-appointment-finder
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=default.target

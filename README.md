@@ -31,7 +31,8 @@ uv run ge-appointment-finder --help
    ge-appointment-finder locations --state OH --state MI
    ```
 
-2. Point it at an ntfy topic. Copy `.env.example` to `.env`, or export the variables:
+2. Point it at an ntfy topic by exporting the variables (or put them in a file
+   like `.env.example` and run via `uv run --env-file .env ...`):
 
    ```sh
    export NTFY_URL=https://ntfy.sh/your-secret-topic
@@ -56,8 +57,37 @@ uv run ge-appointment-finder --help
    | `--once` | Poll once and exit (handy under cron/systemd timers) |
    | `--no-notify` | Log new slots instead of pushing to ntfy |
 
-Subscribe to the topic in the ntfy app and you're done. Delete the state file to
-re-notify about slots that were already reported.
+Subscribe to the topic in the ntfy app and you're done. Slots are remembered in
+the state file so each is reported once; a failed push is retried on the next
+poll, and past slots are pruned automatically. Delete the state file to
+re-notify about everything.
+
+Enrollment center names and IDs are fetched live from CBP, so new or renamed
+centers show up in `locations` without an update. Restart `watch` with new
+`-l` flags to add a center.
+
+## Running as a service
+
+Two options:
+
+**Long-running (systemd):** `contrib/ge-appointment-finder.service` is a user
+unit that runs `watch` with `Restart=on-failure`, reads `NTFY_*` from
+`~/.config/ge-appointment-finder/env`, and keeps the state file in
+`~/.local/state/ge-appointment-finder/`. Install steps are in the file's
+header; adjust the `-l` / `--before` arguments to your centers.
+
+```sh
+systemctl --user status ge-appointment-finder
+journalctl --user -u ge-appointment-finder -f
+```
+
+**Periodic (cron / systemd timer):** run `watch --once` on a schedule. State
+lives in `--state-file`, so each invocation only reports slots the previous
+ones haven't.
+
+```cron
+*/5 * * * * cd ~/ge && NTFY_URL=https://ntfy.sh/your-topic ~/.local/bin/ge-appointment-finder watch --once -l 5023 >> ge.log 2>&1
+```
 
 ## Development
 

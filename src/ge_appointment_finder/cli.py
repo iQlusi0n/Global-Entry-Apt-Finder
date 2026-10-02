@@ -60,14 +60,20 @@ def check_once(
         slots.extend(cbp.fetch_slots(location_id))
     if before is not None:
         slots = [slot for slot in slots if slot.start.date() < before]
-    fresh = seen.new(slots)
+    fresh = seen.unseen(slots)
     if not fresh:
         log.info("no new slots")
         return fresh
     message = format_message(fresh, names)
     log.info("new slots:\n%s", message)
     if notifier is not None:
-        notifier.send(message, title="Global Entry slots available")
+        try:
+            notifier.send(message, title="Global Entry slots available")
+        except OSError as e:
+            # Not remembered: the next poll will retry the notification.
+            log.error("push notification failed, will retry next poll: %s", e)
+            return []
+    seen.remember(fresh)
     return fresh
 
 
