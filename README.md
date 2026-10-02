@@ -46,16 +46,16 @@ uv run ge-appointment-finder --help
    ge-appointment-finder watch -l 5023 -l 7680 --before 2026-12-01
    ```
 
-   Options:
+   Options (each also settable via the environment; flags win):
 
-   | Flag | Meaning |
-   | --- | --- |
-   | `-l`, `--location ID` | Enrollment center to watch (repeatable) |
-   | `--before YYYY-MM-DD` | Ignore slots on or after this date |
-   | `--interval SEC` | Seconds between polls (default 300) |
-   | `--state-file PATH` | Where already-reported slots are remembered (default `.slots.json`) |
-   | `--once` | Poll once and exit (handy under cron/systemd timers) |
-   | `--no-notify` | Log new slots instead of pushing to ntfy |
+   | Flag | Env | Meaning |
+   | --- | --- | --- |
+   | `-l`, `--location ID` | `GE_LOCATIONS=5023,7680` | Enrollment center to watch (repeatable) |
+   | `--before YYYY-MM-DD` | `GE_BEFORE` | Ignore slots on or after this date |
+   | `--interval SEC` | `GE_INTERVAL` | Seconds between polls (default 300) |
+   | `--state-file PATH` | `GE_STATE_FILE` | Where already-reported slots are remembered (default `.slots.json`) |
+   | `--once` | | Poll once and exit (handy under cron/systemd timers) |
+   | `--no-notify` | | Log new slots instead of pushing to ntfy |
 
 Subscribe to the topic in the ntfy app and you're done. Slots are remembered in
 the state file so each is reported once; a failed push is retried on the next
@@ -68,25 +68,47 @@ centers show up in `locations` without an update. Restart `watch` with new
 
 ## Running as a service
 
-Two options:
-
-**Long-running (systemd):** `contrib/ge-appointment-finder.service` is a user
-unit that runs `watch` with `Restart=on-failure`, reads `NTFY_*` from
-`~/.config/ge-appointment-finder/env`, and keeps the state file in
-`~/.local/state/ge-appointment-finder/`. Install steps are in the file's
-header; adjust the `-l` / `--before` arguments to your centers.
+`contrib/ge-appointment-finder.service` is a systemd **user** unit. All
+configuration comes from `~/.config/ge-appointment-finder/env` (same keys as
+`.env.example`), so the unit file itself never needs editing.
 
 ```sh
-systemctl --user status ge-appointment-finder
+uv tool install git+https://github.com/iQlusi0n/GE-Appointment-Finder
+mkdir -p ~/.config/systemd/user ~/.config/ge-appointment-finder
+cp contrib/ge-appointment-finder.service ~/.config/systemd/user/
+cp .env.example ~/.config/ge-appointment-finder/env
+chmod 600 ~/.config/ge-appointment-finder/env
+$EDITOR ~/.config/ge-appointment-finder/env     # NTFY_URL, GE_LOCATIONS, GE_BEFORE ...
+systemctl --user daemon-reload
+systemctl --user enable --now ge-appointment-finder
+loginctl enable-linger "$USER"                   # keep it running while logged out
+```
+
+```sh
+systemctl --user status ge-appointment-finder    # shows "last poll HH:MM:SS, N new slot(s)"
 journalctl --user -u ge-appointment-finder -f
 ```
 
-**Periodic (cron / systemd timer):** run `watch --once` on a schedule. State
-lives in `--state-file`, so each invocation only reports slots the previous
-ones haven't.
+What the unit gives you:
+
+- `Type=notify`: the service reports `READY=1` once it has resolved your
+  locations, and a status line after every poll.
+- `WatchdogSec=900`: a hung poll gets the process restarted. Raise it if you
+  set `GE_INTERVAL` above ~10 minutes.
+- `Restart=on-failure` with `StartLimitIntervalSec=0`: survives network
+  outages indefinitely. `SIGTERM` (`systemctl stop`) exits cleanly.
+- `StateDirectory=`: the seen-slot file lives in the unit's state directory
+  (`~/.config/ge-appointment-finder/slots.json` for user units; newer systemd
+  also symlinks it from `~/.local/state/`).
+- Log lines carry no timestamps under journald (it adds its own).
+
+After changing the env file: `systemctl --user restart ge-appointment-finder`.
+
+Prefer a timer or cron instead? Run `watch --once` on a schedule; the state
+file dedupes across invocations:
 
 ```cron
-*/5 * * * * cd ~/ge && NTFY_URL=https://ntfy.sh/your-topic ~/.local/bin/ge-appointment-finder watch --once -l 5023 >> ge.log 2>&1
+*/5 * * * * GE_LOCATIONS=5023 NTFY_URL=https://ntfy.sh/your-topic ~/.local/bin/ge-appointment-finder watch --once --state-file ~/.slots.json
 ```
 
 ## Development

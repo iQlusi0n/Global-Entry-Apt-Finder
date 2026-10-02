@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+import signal
 import sys
 import time
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
-from ge_appointment_finder import __version__, cbp
+from ge_appointment_finder import __version__, cbp, systemd
 from ge_appointment_finder.notify import Notifier, NotifierConfigError
 from ge_appointment_finder.store import SeenSlots
 
@@ -17,6 +19,20 @@ log = logging.getLogger("ge_appointment_finder")
 
 DEFAULT_INTERVAL = 300
 DEFAULT_STATE_FILE = Path(".slots.json")
+
+
+class Stop(Exception):  # noqa: N818
+    """Raised from the SIGTERM handler to unwind the watch loop."""
+
+
+def _env(name: str) -> str | None:
+    """Environment override for a CLI option; empty values count as unset."""
+    return os.environ.get(name) or None
+
+
+def parse_locations(value: str) -> list[int]:
+    """Parse ``GE_LOCATIONS``: integers separated by commas and/or whitespace."""
+    return [int(part) for part in value.replace(",", " ").split()]
 
 
 def format_message(slots: list[cbp.Slot], names: dict[int, str]) -> str:
@@ -94,15 +110,26 @@ def cmd_watch(args: argparse.Namespace) -> int:
         args.interval,
         f" for slots before {args.before}" if args.before else "",
     )
+
+    def on_sigterm(signum: int, frame: object) -> None:
+        raise Stop
+
+    signal.signal(signal.SIGTERM, on_sigterm)
+    systemd.notify("READY=1")
     try:
         while True:
-            check_once(args.location, names, args.before, seen, notifier)
+            fresh = check_once(args.location, names, args.before, seen, notifier)
+            systemd.notify(
+                "WATCHDOG=1",
+                f"STATUS=last poll {datetime.now():%H:%M:%S}, {len(fresh)} new slot(s)",
+            )
             if args.once:
                 return 0
             time.sleep(args.interval)
-    except KeyboardInterrupt:
-        log.info("interrupted")
-        return 130
+    except (KeyboardInterrupt, Stop):
+        log.info("stopping")
+        systemd.notify("STOPPING=1")
+        return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -120,35 +147,42 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_loc.set_defaults(func=cmd_locations)
 
-    p_watch = sub.add_parser("watch", help="poll for new slots and send notifications")
+    p_watch = sub.add_parser(
+        "watch",
+        help="poll for new slots and send notifications",
+        description="Poll for new slots and send notifications. Every option can also be "
+        "set via the environment (GE_LOCATIONS, GE_BEFORE, GE_INTERVAL, GE_STATE_FILE), "
+        "which is how the systemd unit is configured. Flags override the environment.",
+    )
     p_watch.add_argument(
         "-l",
         "--location",
         action="append",
         type=int,
-        required=True,
         metavar="ID",
-        help="enrollment center ID to watch (repeatable; see `locations`)",
+        help="enrollment center ID to watch (repeatable; see `locations`) [env: GE_LOCATIONS]",
     )
     p_watch.add_argument(
         "--before",
         type=date.fromisoformat,
+        default=date.fromisoformat(before) if (before := _env("GE_BEFORE")) else None,
         metavar="YYYY-MM-DD",
-        help="ignore slots on or after this date",
+        help="ignore slots on or after this date [env: GE_BEFORE]",
     )
     p_watch.add_argument(
         "--interval",
         type=int,
-        default=DEFAULT_INTERVAL,
+        default=int(_env("GE_INTERVAL") or DEFAULT_INTERVAL),
         metavar="SEC",
-        help=f"seconds between polls (default: {DEFAULT_INTERVAL})",
+        help=f"seconds between polls (default: {DEFAULT_INTERVAL}) [env: GE_INTERVAL]",
     )
     p_watch.add_argument(
         "--state-file",
         type=Path,
-        default=DEFAULT_STATE_FILE,
+        default=Path(_env("GE_STATE_FILE") or DEFAULT_STATE_FILE),
         metavar="PATH",
-        help=f"where already-reported slots are remembered (default: {DEFAULT_STATE_FILE})",
+        help=f"where already-reported slots are remembered (default: {DEFAULT_STATE_FILE}) "
+        "[env: GE_STATE_FILE]",
     )
     p_watch.add_argument("--once", action="store_true", help="poll a single time and exit")
     p_watch.add_argument(
@@ -159,10 +193,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.command == "watch" and not args.location:
+        env_locations = _env("GE_LOCATIONS")
+        if not env_locations:
+            parser.error("watch: pass -l/--location at least once or set GE_LOCATIONS")
+        args.location = parse_locations(env_locations)
+
+    # journald stamps every line itself; don't double up.
+    fmt = "%(levelname)s %(message)s"
+    if not systemd.under_journal():
+        fmt = "%(asctime)s " + fmt
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
+        format=fmt,
         datefmt="%H:%M:%S",
         stream=sys.stderr,
     )

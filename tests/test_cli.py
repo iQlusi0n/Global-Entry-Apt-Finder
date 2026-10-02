@@ -78,3 +78,47 @@ def test_watch_requires_ntfy_url_unless_no_notify(monkeypatch, caplog):
 def test_parser_rejects_bad_date():
     with pytest.raises(SystemExit):
         cli.build_parser().parse_args(["watch", "-l", "1", "--before", "not-a-date"])
+
+
+def test_watch_config_from_env(monkeypatch, tmp_path):
+    for var in ("GE_LOCATIONS", "GE_BEFORE", "GE_INTERVAL", "GE_STATE_FILE"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("GE_LOCATIONS", "5023, 7680 16242")
+    monkeypatch.setenv("GE_BEFORE", "2099-01-02")
+    monkeypatch.setenv("GE_INTERVAL", "42")
+    monkeypatch.setenv("GE_STATE_FILE", str(tmp_path / "s.json"))
+    captured = {}
+    monkeypatch.setattr(cli, "cmd_watch", lambda args: captured.update(vars(args)) or 0)
+
+    assert cli.main(["watch"]) == 0
+    assert captured["location"] == [5023, 7680, 16242]
+    assert captured["before"] == date(2099, 1, 2)
+    assert captured["interval"] == 42
+    assert captured["state_file"] == tmp_path / "s.json"
+
+    # Flags replace, not extend, the environment.
+    assert cli.main(["watch", "-l", "1", "--interval", "7"]) == 0
+    assert captured["location"] == [1]
+    assert captured["interval"] == 7
+
+
+def test_watch_requires_locations_from_flag_or_env(monkeypatch):
+    monkeypatch.delenv("GE_LOCATIONS", raising=False)
+    with pytest.raises(SystemExit):
+        cli.main(["watch", "--once", "--no-notify"])
+
+
+def test_watch_stops_cleanly_on_sigterm(monkeypatch, tmp_path):
+    import os
+    import signal
+
+    monkeypatch.delenv("GE_LOCATIONS", raising=False)
+    monkeypatch.setattr(cbp, "fetch_locations", lambda: [])
+    monkeypatch.setattr(cbp, "fetch_slots", lambda lid, limit=10: [])
+    monkeypatch.setattr(cli.time, "sleep", lambda s: os.kill(os.getpid(), signal.SIGTERM))
+    previous = signal.getsignal(signal.SIGTERM)
+    try:
+        rc = cli.main(["watch", "-l", "1", "--no-notify", "--state-file", str(tmp_path / "s.json")])
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+    assert rc == 0
